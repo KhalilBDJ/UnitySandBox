@@ -62,7 +62,7 @@ public class SignalRSender : MonoBehaviour
     public void ScanQRCode()
     {
         _qrCodeScanned = true;
-        StartCoroutine(StartTimer());
+        //StartCoroutine(StartTimer());
     }
     
     
@@ -86,7 +86,7 @@ public class SignalRSender : MonoBehaviour
         _connexionImage = new HubConnectionBuilder()
             .WithUrl("https://localhost:7187/Image")
             .Build();
-        _connexionImage.On<byte[], string>("ReceiveImage", (imag, sess) =>
+        _connexionImage.On<byte[], string>("ReceiveImageAsync", (imag, sess) =>
         {
             Debug.Log("OUIIIIIi");
         });
@@ -110,6 +110,7 @@ public class SignalRSender : MonoBehaviour
         //Tant que je n'ai pas reçu la confirmation que les CGUs ont été acceptées, je continue le timer
         _connexionSession.On("ReceiveCGUsAccepted", () =>
         {
+            Debug.Log("yes");
             image1.enabled = true;
             image2.enabled = true;
             StopCoroutine(_timerCoroutine);
@@ -149,7 +150,7 @@ public class SignalRSender : MonoBehaviour
             byte[] img = ((Texture2D) image.texture).EncodeToJPG();
             
             //J'envoie l'image et l'id de session au back
-            await _connexionImage.InvokeAsync("SendImage", img, _session);
+            await _connexionImage.InvokeAsync("SendImageAsync", img, _session);
             Debug.Log("L'image envoyé appartient à la session :" + _session);
         }
         catch (Exception ex)

@@ -19,7 +19,7 @@ namespace _Project.Scripts
             _connexionImage = new HubConnectionBuilder()
                 .WithUrl("https://localhost:7187/Image")
                 .Build();
-            _connexionImage.On<byte[]/*, string*/>("ReceiveImage", (image/*, _session*/) => 
+            _connexionImage.On<byte[]/*, string*/>("ReceiveImageAsync", (image/*, _session*/) => 
             {
                 Debug.Log(image);
                 //Debug.Log(_session);
@@ -52,7 +52,7 @@ namespace _Project.Scripts
             {
                 byte[] img = ((Texture2D) image.texture).EncodeToJPG();
                 Image test = new Image(img, _session);
-                await _connexionImage.InvokeAsync("SendImage",
+                await _connexionImage.InvokeAsync("SendImageAsync",
                     test.image/*, test.sessionId*/);
                 Debug.Log(test.sessionId);
             }
