@@ -26,6 +26,7 @@ public class SignalRSender : MonoBehaviour
     private bool _cguAccepted;
     private int _timer;
     private Coroutine _timerCoroutine;
+    private bool sessionReceived;
     
     //Testing
     private bool _timerStarted;
@@ -40,6 +41,7 @@ public class SignalRSender : MonoBehaviour
         _qrCodeScanned = false;
         _cguAccepted = false;
         _timerCoroutine = null;
+        sessionReceived = false;
         await InitAsync();
     }
 
@@ -54,10 +56,10 @@ public class SignalRSender : MonoBehaviour
         await SendImageAsync(image2);
     }
 
-    public void AcceptCGUs()
+    /*public void AcceptCGUs()
     {
         _cguAccepted = true;
-    }
+    }*/
 
     public void ScanQRCode()
     {
@@ -84,36 +86,73 @@ public class SignalRSender : MonoBehaviour
         
         //Initialise les connexions pour les Hubs
         _connexionImage = new HubConnectionBuilder()
-            .WithUrl("https://localhost:7187/Image")
+            .WithUrl(/*"http://mirar-testing.enrevar.tech/Image"*/ "https://localhost:7187/Image")
             .Build();
         _connexionImage.On<byte[], string>("ReceiveImageAsync", (imag, sess) =>
         {
             Debug.Log("OUIIIIIi");
         });
         _connexionSession = new HubConnectionBuilder()
-            .WithUrl("https://localhost:7187/Session")
+            .WithUrl(/*"http://mirar-testing.enrevar.tech/Session"*/ "https://localhost:7187/Session")
             .Build();
         
         //Si je reçois l'id, alors je le stock
-        _connexionSession.On<string>("ReceiveSessionId", session =>
+        if (!sessionReceived)
         {
-            _session = session;
-            Debug.Log(session);
-        });
+            _connexionSession.On<string>("ReceiveSessionId", session =>
+            {
+                _session = session;
+                sessionReceived = true;
+                Debug.Log(session);
+                Debug.Log("yes");
+                image1.enabled = true;
+                image2.enabled = true;
+                //_session = sessionId;
+                StopCoroutine(_timerCoroutine);
+                Debug.Log(_session); 
+                _cguAccepted = true;
+            });
+        }
+        
         
         //Si on m'autorise à commencer le timer, alors je lance une coroutine
         _connexionSession.On<string>("ReceiveTimerCanBegin", session =>
         {
             _timerCoroutine = StartCoroutine( StartTimer());
+            Debug.Log("yes week-end");
+        });
+
+        _connexionSession.On<string>("ReceiveLanguageChangeRequest", language =>
+        {
+            //ajouter ce qu'il faut faire pour le changement
+            Debug.Log(language);
+        });
+
+        _connexionImage.On<string>("ReceiveError", error =>
+        {
+            Debug.Log(error);
         });
         
         //Tant que je n'ai pas reçu la confirmation que les CGUs ont été acceptées, je continue le timer
-        _connexionSession.On("ReceiveCGUsAccepted", () =>
+        _connexionSession.On<string>("ReceiveCGUsAccepted", sessionId =>
         {
-            Debug.Log("yes");
-            image1.enabled = true;
-            image2.enabled = true;
-            StopCoroutine(_timerCoroutine);
+            if (!_cguAccepted)
+            {
+                _session = sessionId;
+                Debug.Log("yes");
+                image1.enabled = true;
+                image2.enabled = true;
+                //_session = sessionId;
+                StopCoroutine(_timerCoroutine);
+                Debug.Log(_session);
+                _cguAccepted = true;
+            }
+            
+        });
+
+        _connexionSession.On<string>("ReceiveCGUsRefused", sessionId =>
+        {
+            Debug.Log(sessionId  + " a refusé les CGUs");
         });
         
         await StartConnectionAsync();
